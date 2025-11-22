@@ -14,7 +14,7 @@ export const UserType = new GraphQLObjectType({
     balance: { type: new GraphQLNonNull(GraphQLFloat) },
 
     profile: {
-      type: ProfileType, 
+      type: ProfileType,
       resolve: (parent, args, { loaders }: Context) => {
         return loaders.profileLoader.load(parent.id);
       },
@@ -29,21 +29,25 @@ export const UserType = new GraphQLObjectType({
 
     userSubscribedTo: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(UserType))),
-      resolve: async (parent, args, { prisma, loaders }: Context) => {
-        const subs = await prisma.subscribersOnAuthors.findMany({
-          where: { subscriberId: parent.id },
-        });
-        return loaders.userLoader.loadMany(subs.map((s: any) => s.authorId));
+      resolve: async (parent: any, args, { loaders }: Context) => {
+        if (parent.userSubscribedTo) {
+          const authorIds = parent.userSubscribedTo.map((s: any) => s.authorId);
+          return loaders.userLoader.loadMany(authorIds);
+        }
+        const authorIds = await loaders.userSubscribedToLoader.load(parent.id);
+        return loaders.userLoader.loadMany(authorIds);
       },
     },
 
     subscribedToUser: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(UserType))),
-      resolve: async (parent, args, { prisma, loaders }: Context) => {
-        const subs = await prisma.subscribersOnAuthors.findMany({
-          where: { authorId: parent.id },
-        });
-        return loaders.userLoader.loadMany(subs.map((s: any) => s.subscriberId));
+      resolve: async (parent: any, args, { loaders }: Context) => {
+        if (parent.subscribedToUser) {
+          const subscriberIds = parent.subscribedToUser.map((s: any) => s.subscriberId);
+          return loaders.userLoader.loadMany(subscriberIds);
+        }
+        const subscriberIds = await loaders.subscribedToUserLoader.load(parent.id);
+        return loaders.userLoader.loadMany(subscriberIds);
       },
     },
   }),

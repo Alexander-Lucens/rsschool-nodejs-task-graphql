@@ -7,6 +7,8 @@ export type GraphQLLoaders = {
   postLoader: DataLoader<string, Post[]>;
   profileLoader: DataLoader<string, Profile | null>;
   memberTypeLoader: DataLoader<string, MemberType | null>;
+  subscribedToUserLoader: DataLoader<string, string[]>;
+  userSubscribedToLoader: DataLoader<string, string[]>;
 };
 
 export function createLoaders(prisma: FastifyInstance['prisma']): GraphQLLoaders {
@@ -47,6 +49,32 @@ export function createLoaders(prisma: FastifyInstance['prisma']): GraphQLLoaders
       });
       const typeMap = new Map(types.map((t) => [t.id, t]));
       return ids.map((id) => typeMap.get(id) || null);
+    }),
+
+    userSubscribedToLoader: new DataLoader(async (subscriberIds: readonly string[]) => {
+      const subscriptions = await prisma.subscribersOnAuthors.findMany({
+        where: { subscriberId: { in: subscriberIds as string[] } },
+      });
+      const map = new Map<string, string[]>();
+      subscriptions.forEach((sub) => {
+        const list = map.get(sub.subscriberId) || [];
+        list.push(sub.authorId);
+        map.set(sub.subscriberId, list);
+      });
+      return subscriberIds.map((id) => map.get(id) || []);
+    }),
+
+    subscribedToUserLoader: new DataLoader(async (authorIds: readonly string[]) => {
+      const subscriptions = await prisma.subscribersOnAuthors.findMany({
+        where: { authorId: { in: authorIds as string[] } },
+      });
+      const map = new Map<string, string[]>();
+      subscriptions.forEach((sub) => {
+        const list = map.get(sub.authorId) || [];
+        list.push(sub.subscriberId);
+        map.set(sub.authorId, list);
+      });
+      return authorIds.map((id) => map.get(id) || []);
     }),
   };
 }
