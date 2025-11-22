@@ -30,11 +30,9 @@ export const UserType = new GraphQLObjectType({
     userSubscribedTo: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(UserType))),
       resolve: async (parent, args, { prisma, loaders }: Context) => {
-        // Тут сложнее: сначала берем связи из БД, потом грузим юзеров через лоадер
         const subs = await prisma.subscribersOnAuthors.findMany({
           where: { subscriberId: parent.id },
         });
-        // subs - это массив связей, нам нужны authorId
         return loaders.userLoader.loadMany(subs.map((s: any) => s.authorId));
       },
     },
